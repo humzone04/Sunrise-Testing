@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Build-wide compiler settings. MSBuild imports this before the toolset is resolved, so it
+  applies to Visual Studio, msbuild on the command line, and CI alike, with no per-project edit.
+
+  The physics host translation units need roughly 3 GB of compiler heap each. Every file under
+  src/server/gameplay/physics/host includes internal.h, which embeds a CheckpointStore holding
+  four whole world snapshots, and MSVC materialises that entire tree when it synthesises the
+  default constructor. Two settings keep that in bounds:
+
+  PreferredToolArchitecture picks the 64-bit hosted compiler. The 32-bit one caps out near 4 GB
+  of address space and fails with C1060 on those files.
+
+  ProcessorNumber caps /MP. The project sets MultiProcessorCompilation, which otherwise spawns
+  one compiler per core, so a 16-core machine would need about 48 GB of physical memory at once.
+  Raise SunriseCompileProcessorCount on a machine with more RAM:
+
+      msbuild Sunrise.sln /p:SunriseCompileProcessorCount=8
+-->
+<Project>
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <SunriseCompileProcessorCount Condition="'$(SunriseCompileProcessorCount)' == ''">2</SunriseCompileProcessorCount>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <ProcessorNumber>$(SunriseCompileProcessorCount)</ProcessorNumber>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>
