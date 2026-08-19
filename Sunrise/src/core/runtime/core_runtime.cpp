@@ -12,6 +12,7 @@
 #include "../../client/runtime/runtime.h"
 #include "../../middleware/runtime/middleware_runtime.h"
 #include "../../server/runtime/server_runtime.h"
+#include "../../state/activity/receipts/activity_receipts.h"
 #include "../../state/content_manifest/content_manifest_state_runtime.h"
 #include "../../state/entitlements/entitlement_runtime.h"
 #include "../../state/runtime/runtime.h"
@@ -165,6 +166,10 @@ bool shutdown() noexcept {
         ReleaseSRWLockExclusive(&g_runtimeLock);
         return true;
     }
+    // Written before Client is stopped, because a Client that refuses to detach returns early and
+    // State is never reached. The registry is the only record of what the session framed, so it
+    // has to be out before any step that can abandon the sequence.
+    (void)state::activity::receipts::report("shutdown");
     if (!client::shutdown()) {
         // Server and State must remain valid while any Client hook is attached.
         ReleaseSRWLockExclusive(&g_runtimeLock);
